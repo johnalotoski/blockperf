@@ -47,6 +47,7 @@ classifiers = [
 # https://packaging.python.org/discussions/install-requires-vs-requirements/
 dependencies = [
   "paho-mqtt==1.6.1",
+  "prometheus-client==0.20.0",
   "psutil==5.9.6",
 ]
 
