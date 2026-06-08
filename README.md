@@ -66,27 +66,27 @@ backends, and the following five specific tracers:
     ],
   },
   "BlockFetch.Client.CompletedBlockFetch": {
-    "details": "DNormal",
+    "detail": "DNormal",
     "maxFrequency": 0.0,
     "severity": "Info"
   },
   "BlockFetch.Client.SendFetchRequest": {
-    "details": "DNormal",
+    "detail": "DNormal",
     "maxFrequency": 0.0,
     "severity": "Info"
   },
   "ChainDB.AddBlockEvent.AddedToCurrentChain": {
-    "details": "DNormal",
+    "detail": "DNormal",
     "maxFrequency": 0.0,
     "severity": "Info"
   },
   "ChainDB.AddBlockEvent.SwitchedToAFork": {
-    "details": "DNormal",
+    "detail": "DNormal",
     "maxFrequency": 0.0,
     "severity": "Info"
   },
   "ChainSync.Client.DownloadedHeader": {
-    "details": "DNormal",
+    "detail": "DNormal",
     "maxFrequency": 0.0,
     "severity": "Info"
   }

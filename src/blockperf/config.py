@@ -132,15 +132,15 @@ class AppConfig:
         else:
 
             def checkCfg(target, level, inheritPath, cfg):
-                details = cfg.get("details", None)
+                detail = cfg.get("detail", None)
                 maxFrequency = cfg.get("maxFrequency", None)
                 severity = cfg.get("severity", None)
 
                 error = False
 
-                if details not in ["DNormal", "DDetailed", "DMaximum"]:
+                if detail not in ["DNormal", "DDetailed", "DMaximum"]:
                     logger.error(
-                        f"For tracer '{target}' the {level} was found, but details of '{details}' is not DNormal, DDetailed, DMaximum"
+                        f"For tracer '{target}' the {level} was found, but detail of '{detail}' is not DNormal, DDetailed, DMaximum"
                     )
                     error = True
 
@@ -161,14 +161,14 @@ class AppConfig:
                         f"Ideal config for TraceOptions tracer '{target}' is to declare it rather than inherit from {level} of '{inheritPath}' with:"
                     )
                     logger.warning(
-                        f'{{"{target}":{{"details":"DNormal","maxFrequency":0.0,"severity":"Info"}}'
+                        f'{{"{target}":{{"detail":"DNormal","maxFrequency":0.0,"severity":"Info"}}'
                     )
                 elif error:
                     logger.error(
                         f"Ideal config for TraceOptions tracer '{target}' is to declare it explicitly with:"
                     )
                     logger.error(
-                        f'{{"{target}":{{"details":"DNormal","maxFrequency":0.0,"severity":"Info"}}'
+                        f'{{"{target}":{{"detail":"DNormal","maxFrequency":0.0,"severity":"Info"}}'
                     )
 
                 if error:
