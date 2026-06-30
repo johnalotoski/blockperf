@@ -6,26 +6,18 @@ from blockperf.nodelogs import LogEvent, LogEventKind, LogEventNs
 # logging.basicConfig(level=logging.DEBUG, format="(%(threadName)-9s) %(message)s")
 logger = logging.getLogger(__name__)
 
-NETWORK_STARTTIMES = {
-    # mainnet
-    764824073: 1591566291,
-    # preprod
-    1: 1655683200,
-    # preview
-    2: 1666656000,
-}
 
+def slot_time_of(slot_num: int, network_start: int) -> datetime:
+    """Calculate the timestamp that the given absolute slot should have
+    occurred.
 
-def slot_time_of(slot_num: int, network: int) -> datetime:
-    """Calculate the timestamp that given slot should have occurred.
-    Works only if the networks slots are 1 second lengths!
+    `network_start` is the slot-time reference for the network (see
+    AppConfig.network_start_time): the wall-clock unix time such that
+    network_start + slot_num is the slot's time. Works only if the network's
+    slots are 1 second in length.
     """
-    logger.debug("slot_time_of(%s, %s)", slot_num, network)
-    if network not in NETWORK_STARTTIMES:
-        raise ValueError(f"No starttime for {network} available")
-
-    _network_start = NETWORK_STARTTIMES.get(network, 0)
-    _slot_time = _network_start + slot_num
+    logger.debug("slot_time_of(%s, %s)", slot_num, network_start)
+    _slot_time = network_start + slot_num
     slot_time = datetime.fromtimestamp(_slot_time, tz=timezone.utc)
     return slot_time
 
@@ -72,11 +64,11 @@ class BlockSample:
 
     trace_events: list = []
 
-    def __init__(self, events: list, network_magic: int, legacy_tracing: bool = True) -> None:
+    def __init__(self, events: list, network_start_time: int = 0, legacy_tracing: bool = True) -> None:
         """Creates LogEvent and orders the events by at field"""
         events.sort(key=lambda x: x.at)
         self.trace_events = events
-        self.network_magic = network_magic
+        self.network_start_time = network_start_time
         self.legacy_tracing = legacy_tracing
 
     def __str__(self):
@@ -174,7 +166,7 @@ class BlockSample:
     @property
     def slot_time(self) -> datetime:
         """Determine the time that current slot_num should have happened."""
-        _slot_time = slot_time_of(self.slot_num, self.network_magic)
+        _slot_time = slot_time_of(self.slot_num, self.network_start_time)
         return _slot_time
 
     @property

@@ -11,6 +11,7 @@ import logging
 import os
 import sys
 from configparser import ConfigParser
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Union
 
@@ -29,6 +30,22 @@ BROKER_KEEPALIVE = 180
 LEGACY_TRACING = "True"
 PUBLISH = "True"
 ROOTDIR = Path(__file__).parent
+
+# Precomputed slot-time references for networks whose absolute slot numbering
+# spans eras with non-1-second slot lengths (mainnet, preprod and preview each
+# include a 20-second Byron era). For these the reference is offset so that
+# reference + absolute_slot equals the slot's wall-clock time for the current
+# 1-second slots. Keyed by network magic.
+#
+# Any network not listed here -- sanchonet, leios devnets and arbitrary custom
+# testnets -- is assumed to use 1-second slots starting from slot 0, in which
+# case the reference is derived from the Shelley genesis systemStart. See
+# AppConfig.network_start_time.
+NETWORK_STARTTIMES = {
+    764824073: 1591566291,  # mainnet
+    1: 1655683200,  # preprod
+    2: 1666656000,  # preview
+}
 
 
 class AppConfig:
@@ -53,6 +70,7 @@ class AppConfig:
             f"Client Name:     {self.name}\n"
             f"Client ID:       {self.clientid}\n"
             f"Networkmagic:    {self.network_magic}\n"
+            f"Slot reference:  {self.network_start_time}\n"
             f"Public IP:       {self.relay_public_ip}:{self.relay_public_port}\n"
             f"Version:         v{blockperf_version}\n"
             # f"..... {blocksample.block_delay} sec\n\n"
@@ -354,6 +372,48 @@ class AppConfig:
     def network_magic(self) -> int:
         """Retrieve network magic from ShelleyGenesisFile"""
         return int(self._shelley_genesis_data.get("networkMagic", 0))
+
+    @property
+    def network_start_time(self) -> int:
+        """Slot-time reference used to translate an absolute (1-second) slot
+        number into wall-clock time, i.e. slot_time = network_start_time + slot.
+
+        Networks with a multi-era slot history (mainnet, preprod, preview) use
+        precomputed references that account for their 20-second Byron era. Any
+        other network -- sanchonet, leios devnets and arbitrary custom testnets
+        -- is assumed to use 1-second slots starting at slot 0, so the reference
+        is simply the Shelley genesis systemStart. This lets blockperf run
+        against any network without requiring a code change.
+        """
+        magic = self.network_magic
+        if magic in NETWORK_STARTTIMES:
+            return NETWORK_STARTTIMES[magic]
+
+        slot_length = self._shelley_genesis_data.get("slotLength", 1)
+        if slot_length != 1:
+            logger.warning(
+                "Shelley genesis slotLength is %s, not 1; slot-time "
+                "calculations assume 1-second slots and may be inaccurate for "
+                "network magic %s",
+                slot_length,
+                magic,
+            )
+
+        system_start = self._shelley_genesis_data.get("systemStart")
+        if not system_start:
+            logger.error(
+                "Could not determine a slot-time reference for network magic "
+                "%s: Shelley genesis has no 'systemStart' and it is not a known "
+                "network",
+                magic,
+            )
+            sys.exit()
+
+        # systemStart is ISO8601, typically suffixed with 'Z' for UTC.
+        dt = datetime.fromisoformat(system_start.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp())
 
     @property
     def active_slot_coef(self) -> float:

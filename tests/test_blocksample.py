@@ -1,9 +1,12 @@
 import pytest
 from datetime import datetime
-from blockperf.config import AppConfig, ConfigError
+from blockperf.config import AppConfig, ConfigError, NETWORK_STARTTIMES
 from blockperf.blocksample import BlockSample
 from blockperf.nodelogs import LogEventKind, LogEvent
 from blockperf.blocksample import slot_time_of
+
+# mainnet slot-time reference, used by the fixtures below
+MAINNET_START = NETWORK_STARTTIMES[764824073]
 
 
 @pytest.fixture
@@ -80,6 +83,7 @@ def sample01():
                           },"env":"8.1.1:ea2c0","host":"mainnetf","loc":null,"msg":"","ns":["cardano.node.ChainDB"],"pid":"1662080","sev":"Notice","thread":"191"}"""
             ),
         ],
+        MAINNET_START,
     )
 
 
@@ -215,7 +219,7 @@ def test_block_local_port(sample01, empty_sample):
 
 def test_slot_time_of():
     """Took Slot and time from this Block: https://cardanoscan.io/block/9121756"""
-    slot_time = slot_time_of(99692109, "mainnet")
+    slot_time = slot_time_of(99692109, MAINNET_START)
     assert int(slot_time.timestamp()) == 1691258400
 
 

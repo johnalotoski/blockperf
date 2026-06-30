@@ -282,7 +282,7 @@ class App:
 
             new_sample = BlockSample(
                 all_events,
-                self.app_config.network_magic,
+                self.app_config.network_start_time,
                 self.app_config.legacy_tracing,
             )
 
@@ -369,7 +369,9 @@ class App:
 
         # If there is one, check its slot_time
         trace_header = trace_headers.pop(0)
-        slot_time = slot_time_of(trace_header.slot_num, self.app_config.network_magic)
+        slot_time = slot_time_of(
+            trace_header.slot_num, self.app_config.network_start_time
+        )
         if slot_time < datetime.now(tz=timezone.utc) - timedelta(hours=12):
             logger.info(
                 "Slot %s is too old (%s)",
