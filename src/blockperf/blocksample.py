@@ -7,7 +7,7 @@ from blockperf.nodelogs import LogEvent, LogEventKind, LogEventNs
 logger = logging.getLogger(__name__)
 
 
-def slot_time_of(slot_num: int, network_start: int) -> datetime:
+def slot_time_of(slot_num: int, network_start: float) -> datetime:
     """Calculate the timestamp that the given absolute slot should have
     occurred.
 
@@ -64,7 +64,7 @@ class BlockSample:
 
     trace_events: list = []
 
-    def __init__(self, events: list, network_start_time: int = 0, legacy_tracing: bool = True) -> None:
+    def __init__(self, events: list, network_start_time: float, legacy_tracing: bool = True) -> None:
         """Creates LogEvent and orders the events by at field"""
         events.sort(key=lambda x: x.at)
         self.trace_events = events

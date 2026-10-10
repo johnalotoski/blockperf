@@ -374,7 +374,7 @@ class AppConfig:
         return int(self._shelley_genesis_data.get("networkMagic", 0))
 
     @property
-    def network_start_time(self) -> int:
+    def network_start_time(self) -> float:
         """Slot-time reference used to translate an absolute (1-second) slot
         number into wall-clock time, i.e. slot_time = network_start_time + slot.
 
@@ -409,11 +409,13 @@ class AppConfig:
             )
             sys.exit()
 
-        # systemStart is ISO8601, typically suffixed with 'Z' for UTC.
+        # systemStart is ISO8601, typically suffixed with 'Z' for UTC. Keep it
+        # a float: fractional seconds shift every derived slot time and bias the
+        # millisecond-level header_delta metric.
         dt = datetime.fromisoformat(system_start.replace("Z", "+00:00"))
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
-        return int(dt.timestamp())
+        return dt.timestamp()
 
     @property
     def active_slot_coef(self) -> float:

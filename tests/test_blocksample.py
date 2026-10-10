@@ -89,7 +89,7 @@ def sample01():
 
 @pytest.fixture
 def empty_sample():
-    return BlockSample(events=[])
+    return BlockSample(events=[], network_start_time=MAINNET_START)
 
 
 def test_first_trace_header(sample01, empty_sample):
