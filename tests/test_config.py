@@ -2,6 +2,7 @@ import os
 import pytest
 import json
 import blockperf
+from configparser import ConfigParser
 from unittest import mock
 from blockperf.config import AppConfig, ConfigError, NETWORK_STARTTIMES
 
@@ -73,3 +74,70 @@ def _test_shelley_genesis_file():
 def test_active_slot_coef():
     with pytest.raises(SystemExit):
         app_config = AppConfig(None)
+
+
+def test_flatten_enveloped_config_lifts_nested_sections():
+    """cardano-node >= 11.2 nests settings under a top-level 'Configuration'
+    key; flattening lifts the Protocol/HermodTracing/Network members back to the
+    top level so the flat-shape lookups elsewhere keep working."""
+    enveloped = {
+        "$schema": "https://schema",
+        "Version": "1",
+        "MinNodeVersion": "11.2.0",
+        "Configuration": {
+            "Protocol": {
+                "ShelleyGenesisFile": "/nix/store/x-shelley-genesis.json",
+                "ByronGenesisFile": "/nix/store/x-byron-genesis.json",
+                "ShelleyGenesisHash": "deadbeef",
+            },
+            "HermodTracing": {
+                "TraceOptions": {"": {"backends": ["Forwarder"]}},
+                "TraceOptionNodeName": "node",
+            },
+            "Network": {"SomeNetworkKey": 1},
+        },
+    }
+    flat = AppConfig._flatten_enveloped_config(enveloped)
+    assert flat["ShelleyGenesisFile"] == "/nix/store/x-shelley-genesis.json"
+    assert flat["ByronGenesisFile"] == "/nix/store/x-byron-genesis.json"
+    assert flat["TraceOptions"] == {"": {"backends": ["Forwarder"]}}
+    assert flat["TraceOptionNodeName"] == "node"
+    assert flat["SomeNetworkKey"] == 1
+    # The envelope wrapper itself is gone once flattened.
+    assert "Configuration" not in flat
+
+
+def test_flatten_flat_config_passthrough():
+    """A pre-11.2 flat config has no 'Configuration' envelope and is returned
+    unchanged."""
+    flat_config = {
+        "ShelleyGenesisFile": "shelley-genesis.json",
+        "TraceOptions": {"": {"backends": ["Forwarder"]}},
+    }
+    assert AppConfig._flatten_enveloped_config(flat_config) is flat_config
+
+
+def test_node_config_reads_and_flattens_enveloped_file(tmp_path):
+    """node_config reads the node's config file and flattens the envelope so
+    genesis and tracing resolve from the flat shape the module relies on."""
+    config_file = tmp_path / "config.json"
+    config_file.write_text(
+        json.dumps(
+            {
+                "Configuration": {
+                    "Protocol": {
+                        "ShelleyGenesisFile": "/nix/store/x-shelley-genesis.json"
+                    },
+                    "HermodTracing": {
+                        "TraceOptions": {"": {"backends": ["Forwarder"]}}
+                    },
+                }
+            }
+        )
+    )
+    cfg = object.__new__(AppConfig)
+    cfg.config_parser = ConfigParser()
+    with mock.patch.dict(os.environ, {"BLOCKPERF_NODE_CONFIG": str(config_file)}):
+        node_config = cfg.node_config
+    assert node_config["ShelleyGenesisFile"] == "/nix/store/x-shelley-genesis.json"
+    assert node_config["TraceOptions"] == {"": {"backends": ["Forwarder"]}}

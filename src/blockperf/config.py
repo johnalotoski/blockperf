@@ -335,8 +335,32 @@ class AppConfig:
 
     @property
     def node_config(self) -> dict:
-        """Return Path to config.json file from env var, ini file or builtin default"""
-        return json.loads(self.node_config_file.read_text())
+        """Parsed node config, normalized to a flat mapping.
+
+        cardano-node >= 11.2 ships an enveloped config that nests the settings
+        under a top-level "Configuration" key, with genesis files under
+        Configuration.Protocol and tracing under Configuration.HermodTracing.
+        Pre-11.2 configs are already flat. Flatten the envelope back to the flat
+        shape the rest of this module reads, so both config formats work.
+        """
+        raw = json.loads(self.node_config_file.read_text())
+        return self._flatten_enveloped_config(raw)
+
+    @staticmethod
+    def _flatten_enveloped_config(raw: dict) -> dict:
+        configuration = raw.get("Configuration")
+        if not isinstance(configuration, dict):
+            # Pre-11.2 config, already flat.
+            return raw
+        flat: dict = {}
+        # Lift the members of each nested section (Protocol, HermodTracing,
+        # Network, Consensus, Storage) up to the top level.
+        for value in configuration.values():
+            if isinstance(value, dict):
+                flat.update(value)
+        # Settings declared directly on Configuration take precedence.
+        flat.update({k: v for k, v in configuration.items() if not isinstance(v, dict)})
+        return flat
 
     @property
     def node_configdir(self) -> Path:
@@ -365,6 +389,12 @@ class AppConfig:
 
     @property
     def _shelley_genesis_data(self) -> dict:
+        if self._shelley_genesis_file is None:
+            logger.error(
+                "Could not find 'ShelleyGenesisFile' in the node config '%s'",
+                self.node_config_file,
+            )
+            sys.exit()
         _f = self.node_configdir.joinpath(self._shelley_genesis_file)
         return json.loads(_f.read_text())
 
